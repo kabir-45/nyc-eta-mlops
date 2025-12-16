@@ -1,0 +1,18 @@
+ingestion:
+  year: 2025
+  month: 3
+  raw_data_path: "mlops_data/raw.csv"
+
+preprocessing:
+  drop_invalid: true
+  processed_path: "mlops_data/processed/eta_features.parquet"
+
+monitoring:
+  reference_path: "mlops_data/processed/eta_features.parquet"
+  target_col: "ETA"
+
+training:
+  target_col: "ETA"
+  test_size: 0.2
+  random_state: 42
+  model_path: "models/best_model.pkl"

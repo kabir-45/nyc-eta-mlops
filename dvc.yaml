@@ -1,0 +1,41 @@
+stages:
+  data_ingestion:
+    cmd: python src/ingestion/data_ingestion.py
+    deps:
+      - src/ingestion/data_ingestion.py
+    params:
+      - ingestion.year
+      - ingestion.month
+      - ingestion.raw_data_path
+    outs:
+      - mlops_data/raw.csv
+
+  feature_engineering:
+    cmd: python src/features/build_features.py
+    deps:
+      - src/features/build_features.py
+      - src/features/build_features_transformer.py
+      - mlops_data/raw.csv
+    params:
+      - preprocessing.processed_path
+    outs:
+      - mlops_data/processed/eta_features.parquet
+
+  model_training:
+    cmd: python src/model/model_selection.py
+    deps:
+      - src/model/model_selection.py
+      - mlops_data/processed/eta_features.parquet
+    params:
+      - training.target_col
+    outs:
+      - models/best_model.pkl
+
+  train_production:
+    cmd: python src/model/train_best_model.py
+    deps:
+      - src/model/train_best_model.py
+      - mlops_data/processed/eta_features.parquet
+      - models/best_model.pkl
+    outs:
+      - models/production_model.pkl

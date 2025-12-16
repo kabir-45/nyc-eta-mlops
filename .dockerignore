@@ -1,0 +1,7 @@
+.git
+.venv
+.dvc
+mlruns
+mlops_data
+__pycache__
+*.pyc
