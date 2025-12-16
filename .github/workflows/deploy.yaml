@@ -23,7 +23,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          pip install dvc
+          pip install dvc pytest
 
 
       # 5. Run Unit Tests (Fail fast if code is broken)
