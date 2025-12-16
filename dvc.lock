@@ -1,0 +1,81 @@
+schema: '2.0'
+stages:
+  data_ingestion:
+    cmd: python src/ingestion/data_ingestion.py
+    deps:
+    - path: src/ingestion/data_ingestion.py
+      hash: md5
+      md5: eb62539ded304790b45608f5139f4cc5
+      size: 2865
+    params:
+      params.yaml:
+        ingestion.month: 3
+        ingestion.raw_data_path: mlops_data/raw.csv
+        ingestion.year: 2025
+    outs:
+    - path: mlops_data/raw.csv
+      hash: md5
+      md5: 70f84a035ad186f8d9d50c26015b0d48
+      size: 69964745
+  feature_engineering:
+    cmd: python src/features/build_features.py
+    deps:
+    - path: mlops_data/raw.csv
+      hash: md5
+      md5: 70f84a035ad186f8d9d50c26015b0d48
+      size: 69964745
+    - path: src/features/build_features.py
+      hash: md5
+      md5: c2ced37f08a020c56eee3cca10497b03
+      size: 1671
+    - path: src/features/build_features_transformer.py
+      hash: md5
+      md5: 6a8313aaa615cc76c77826a7aa340590
+      size: 2875
+    params:
+      params.yaml:
+        preprocessing.processed_path: mlops_data/processed/eta_features.parquet
+    outs:
+    - path: mlops_data/processed/eta_features.parquet
+      hash: md5
+      md5: 9d3deb299046f0db0554fdb93c1aefd2
+      size: 16749055
+  model_training:
+    cmd: python src/model/model_selection.py
+    deps:
+    - path: mlops_data/processed/eta_features.parquet
+      hash: md5
+      md5: 9d3deb299046f0db0554fdb93c1aefd2
+      size: 16749055
+    - path: src/model/model_selection.py
+      hash: md5
+      md5: c5b995b898ddb679b27a1eab0e124995
+      size: 4428
+    params:
+      params.yaml:
+        training.target_col: ETA
+    outs:
+    - path: models/best_model.pkl
+      hash: md5
+      md5: 948bb31f3eb80e134e75b961c9440483
+      size: 1144905
+  train_production:
+    cmd: python src/model/train_best_model.py
+    deps:
+    - path: mlops_data/processed/eta_features.parquet
+      hash: md5
+      md5: 9d3deb299046f0db0554fdb93c1aefd2
+      size: 16749055
+    - path: models/best_model.pkl
+      hash: md5
+      md5: 948bb31f3eb80e134e75b961c9440483
+      size: 1144905
+    - path: src/model/train_best_model.py
+      hash: md5
+      md5: d44a04f589d6d9b090dd44f8c8911b67
+      size: 1833
+    outs:
+    - path: models/production_model.pkl
+      hash: md5
+      md5: 6ebb5ff19fc65b84ecd45c8e1a8290df
+      size: 1145082
