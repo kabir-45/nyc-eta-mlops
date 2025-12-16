@@ -4,47 +4,42 @@ from mlflow.models import infer_signature
 import pandas as pd
 import joblib
 import os
+import yaml
 
-# 1. Connect to the MLflow Server (Port 5001)
-mlflow.set_tracking_uri("http://localhost:5001")
-mlflow.set_experiment("NYC_Taxi_Registry_Demo")
 
+mlflow.set_tracking_uri("sqlite:///mlflow.db")
+mlflow.set_experiment("NYC-Taxi-Trip-Duration")
+
+def load_params(params_path="params.yaml"):
+    with open(params_path, "r") as f:
+        return yaml.safe_load(f)
 
 def register_latest_model():
-    print("🔍 Debugging paths...")
-    print(f"Current Working Directory: {os.getcwd()}")
+    params = load_params()
+    target_col = params["training"]["target_col"]
 
-    # Check if directory exists
-    data_path = "data/processed"
-    if os.path.exists(data_path):
-        print(f"Files in '{data_path}': {os.listdir(data_path)}")
-    else:
-        print(f"❌ Directory '{data_path}' does not exist!")
-
-    # 2. Load Data (NO TRY/EXCEPT BLOCK - Let it crash if it fails!)
-    print("🚀 Attempting to load data...")
-    # Common names: 'train.parquet', 'train_data.parquet', 'processed_data.parquet'
-    # adjusting strictly to what your pipeline likely produced:
-    file_path = "data/processed/train.parquet"
+    file_path = "mlops_data/processed/eta_features.parquet"
 
     if not os.path.exists(file_path):
+        print(f"❌ File not found at {file_path}. Checking directories...")
+        if os.path.exists("mlops_data"):
+             print(f"Files in mlops_data: {os.listdir('mlops_data')}")
         raise FileNotFoundError(f"Could not find file at: {file_path}")
 
-    df = pd.read_parquet(file_path).sample(1000)
+    df = pd.read_parquet(file_path).sample(100) # Sample is enough for signature
 
-    X = df.drop(columns=["ETA"])  # Ensure this column matches your data
-    y = df["ETA"]
+    if target_col not in df.columns:
+        raise ValueError(f"Target column '{target_col}' not found in dataset columns: {df.columns}")
 
-    # 3. Load the Model
-    model_path = "models/production_model.pkl"
+    X = df.drop(columns=[target_col])
+    y = df[target_col]
+
+    model_path = "models/best_model.pkl"
     if not os.path.exists(model_path):
         raise FileNotFoundError(f"Could not find model at: {model_path}")
-
     model = joblib.load(model_path)
 
-    # 4. Register
-    print("🚀 Registering Model...")
-    with mlflow.start_run() as run:
+    with mlflow.start_run(run_name="Model_Registration") as run:
         mlflow.log_param("model_type", type(model).__name__)
 
         mlflow.sklearn.log_model(
@@ -52,11 +47,8 @@ def register_latest_model():
             artifact_path="model",
             input_example=X.head(1),
             signature=infer_signature(X, y),
-            registered_model_name="TaxiPredictor"
+            registered_model_name="NYC_Taxi_Predictor"
         )
-
-        print(f"✅ Model registered! Run ID: {run.info.run_id}")
-
 
 if __name__ == "__main__":
     register_latest_model()
