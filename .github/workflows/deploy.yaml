@@ -25,12 +25,6 @@ jobs:
           pip install -r requirements.txt
           pip install dvc
 
-      # 4. Pull Data (REQUIRES REMOTE SETUP)
-      - name: Pull DVC Data
-        env:
-          GDRIVE_CREDENTIALS_DATA: ${{ secrets.GDRIVE_CREDENTIALS_DATA }}
-        run: |
-          dvc pull
 
       # 5. Run Unit Tests (Fail fast if code is broken)
       - name: Run Unit Tests
