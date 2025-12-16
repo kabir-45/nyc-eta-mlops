@@ -1,0 +1,61 @@
+name: Production Pipeline
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-train-promote-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout Code
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      # 2. Setup Python
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      # 3. Install dependencies
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install dvc
+
+      # 4. Pull Data (REQUIRES REMOTE SETUP)
+      - name: Pull DVC Data
+        env:
+          GDRIVE_CREDENTIALS_DATA: ${{ secrets.GDRIVE_CREDENTIALS_DATA }}
+        run: |
+          dvc pull
+
+      # 5. Run Unit Tests (Fail fast if code is broken)
+      - name: Run Unit Tests
+        run: pytest tests/
+
+
+      # REQUIRES REMOTE MLFLOW
+      - name: Reproduce Pipeline (Train & Promote)
+        env:
+          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+          MLFLOW_TRACKING_USERNAME: ${{ secrets.MLFLOW_TRACKING_USERNAME }}
+          MLFLOW_TRACKING_PASSWORD: ${{ secrets.MLFLOW_TRACKING_PASSWORD }}
+        run: dvc repro
+
+      # 7. Build Docker Image (Only runs if promotion succeeds)
+      - name: Build Docker Image
+        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/nyc-taxi-api:latest .
+
+      # 8. Push to Docker Hub
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Push Image
+        run: docker push ${{ secrets.DOCKER_USERNAME }}/nyc-taxi-api:latest
+

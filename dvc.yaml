@@ -39,3 +39,9 @@ stages:
       - models/best_model.pkl
     outs:
       - models/production_model.pkl
+
+  evaluate_and_promote:
+    cmd: python src/model/promote_model.py
+    deps:
+      - src/model/promote_model.py
+      - mlruns/
