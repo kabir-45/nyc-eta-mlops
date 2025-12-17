@@ -1,54 +1,50 @@
-import mlflow
-import mlflow.sklearn
-from mlflow.models import infer_signature
-import pandas as pd
-import joblib
 import os
-import yaml
+import sys
+import pandas as pd
+import mlflow
+
+# Add project root to path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+from src.features.build_features_transformer import BuildFeatures
+from src.utils import load_params
+
+# Load params
+params = load_params()
 
 
-mlflow.set_tracking_uri("sqlite:///mlflow.db")
-mlflow.set_experiment("NYC-Taxi-Trip-Duration")
+def run_feature_pipeline(raw_path: str, processed_path: str):
+    # Set experiment (Point this to Dagshub if configured, otherwise local)
+    mlflow.set_experiment("eta_feature_engineering")
 
-def load_params(params_path="params.yaml"):
-    with open(params_path, "r") as f:
-        return yaml.safe_load(f)
+    with mlflow.start_run(run_name="build_features"):
 
-def register_latest_model():
-    params = load_params()
-    target_col = params["training"]["target_col"]
+        try:
+            df = pd.read_parquet(raw_path)
+        except Exception:
+            df = pd.read_csv(raw_path)
 
-    file_path = "mlops_data/processed/eta_features.parquet"
+        mlflow.log_metric("raw_rows", len(df))
+        mlflow.log_metric("raw_columns", df.shape[1])
 
-    if not os.path.exists(file_path):
-        print(f"❌ File not found at {file_path}. Checking directories...")
-        if os.path.exists("mlops_data"):
-             print(f"Files in mlops_data: {os.listdir('mlops_data')}")
-        raise FileNotFoundError(f"Could not find file at: {file_path}")
+        transformer = BuildFeatures()
+        transformer.fit(df)
 
-    df = pd.read_parquet(file_path).sample(100) # Sample is enough for signature
+        mlflow.log_params({f"{k}_low": v for k, v in transformer.lower_bounds.items()})
+        mlflow.log_params({f"{k}_high": v for k, v in transformer.upper_bounds.items()})
 
-    if target_col not in df.columns:
-        raise ValueError(f"Target column '{target_col}' not found in dataset columns: {df.columns}")
+        processed_df = transformer.transform(df)
 
-    X = df.drop(columns=[target_col])
-    y = df[target_col]
+        mlflow.log_metric("processed_rows", len(processed_df))
+        mlflow.log_metric("processed_columns", processed_df.shape[1])
 
-    model_path = "models/best_model.pkl"
-    if not os.path.exists(model_path):
-        raise FileNotFoundError(f"Could not find model at: {model_path}")
-    model = joblib.load(model_path)
+        os.makedirs(os.path.dirname(processed_path), exist_ok=True)
+        processed_df.to_parquet(processed_path, index=False)
+        mlflow.log_param("processed_path", processed_path)
+        return processed_path
 
-    with mlflow.start_run(run_name="Model_Registration") as run:
-        mlflow.log_param("model_type", type(model).__name__)
-
-        mlflow.sklearn.log_model(
-            sk_model=model,
-            artifact_path="model",
-            input_example=X.head(1),
-            signature=infer_signature(X, y),
-            registered_model_name="NYC_Taxi_Predictor"
-        )
 
 if __name__ == "__main__":
-    register_latest_model()
+    raw_path = params['ingestion']['raw_data_path']
+    processed_path = params['preprocessing']['processed_path']
+
+    run_feature_pipeline(raw_path, processed_path)

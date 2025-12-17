@@ -49,7 +49,7 @@ stages:
       size: 16749055
     - path: src/model/model_selection.py
       hash: md5
-      md5: c5b995b898ddb679b27a1eab0e124995
+      md5: 4c5914b749263ff28600280b3a9e1f60
       size: 4428
     params:
       params.yaml:
@@ -57,7 +57,7 @@ stages:
     outs:
     - path: models/best_model.pkl
       hash: md5
-      md5: 948bb31f3eb80e134e75b961c9440483
+      md5: a2d3217e142fd00fa8ec1c84b612e189
       size: 1144905
   train_production:
     cmd: python src/model/train_best_model.py
@@ -68,7 +68,7 @@ stages:
       size: 16749055
     - path: models/best_model.pkl
       hash: md5
-      md5: 948bb31f3eb80e134e75b961c9440483
+      md5: a2d3217e142fd00fa8ec1c84b612e189
       size: 1144905
     - path: src/model/train_best_model.py
       hash: md5
@@ -77,5 +77,17 @@ stages:
     outs:
     - path: models/production_model.pkl
       hash: md5
-      md5: 6ebb5ff19fc65b84ecd45c8e1a8290df
+      md5: b53998448fb7be1ed96aa0359f8635d6
       size: 1145082
+  evaluate_and_promote:
+    cmd: python src/model/promote_model.py
+    deps:
+    - path: mlruns/
+      hash: md5
+      md5: 2816954547a08720801f591e70beb8aa.dir
+      size: 15249850
+      nfiles: 12
+    - path: src/model/promote_model.py
+      hash: md5
+      md5: 199c94c0c51606985ce9536f31fb227f
+      size: 2761
