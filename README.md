@@ -24,4 +24,4 @@ The project follows a modular MLOps architecture:
 ## 🏗️ Architecture
 Here is the high-level overview of the MLOps pipeline, including Data Ingestion, Model Training, and Deployment with Monitoring.
 
-![MLOps Architecture](Gemini_Generated_Image_tghapwtghapwtgha.png)
+![MLOps Architecture](System_Architecture.png)
