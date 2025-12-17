@@ -60,7 +60,7 @@ def train_production_model():
         mlflow.sklearn.log_model(production_model, "model")  # Name artifact 'model' for consistency
 
         # Save the final artifact
-        prod_path = "models/best_model.pkl"  # Ensuring consistent naming
+        prod_path = "models/production_model.pkl"  # Ensuring consistent naming
         joblib.dump(production_model, prod_path)
         print(f"💾 Saved final production model to {prod_path}")
 
