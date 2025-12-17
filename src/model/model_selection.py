@@ -4,19 +4,25 @@ import numpy as np
 import pandas as pd
 import mlflow
 import mlflow.sklearn
+import yaml
 from sklearn.model_selection import train_test_split, KFold, cross_val_score
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.linear_model import LinearRegression
+from xgboost import XGBRegressor
 from lightgbm import LGBMRegressor
 from catboost import CatBoostRegressor
-from xgboost import XGBRegressor
-from sklearn.linear_model import LinearRegression
+
+# ➤ FIX 1: Use local DB file (Serverless mode) for CI/CD compatibility
+mlflow.set_tracking_uri("sqlite:///mlflow.db")
+mlflow.set_experiment("NYC-Taxi-Trip-Duration")
 
 
-mlflow.set_tracking_uri("http://127.0.0.1:5001")
-mlflow.set_experiment("eta_prediction")
+def load_params(params_path="params.yaml"):
+    with open(params_path, "r") as f:
+        return yaml.safe_load(f)
 
 
 def load_dataset(path="mlops_data/processed/eta_features.parquet"):
@@ -24,6 +30,7 @@ def load_dataset(path="mlops_data/processed/eta_features.parquet"):
         print(f"Warning: {path} not found.")
         return None
     return pd.read_parquet(path)
+
 
 def build_preprocessor(df_columns):
     potential_cats = [
@@ -48,6 +55,7 @@ def build_preprocessor(df_columns):
 
     return preprocessor
 
+
 def evaluate_model(model_name, model, preprocessor, x_train, x_val, y_train, y_val, x_test, y_test):
     results = {}
     results["model_name"] = model_name
@@ -59,6 +67,7 @@ def evaluate_model(model_name, model, preprocessor, x_train, x_val, y_train, y_v
     ])
 
     kf = KFold(n_splits=3, shuffle=True, random_state=42)
+    # Using 'neg_root_mean_squared_error' or 'r2'
     cv_scores = cross_val_score(pipeline, x_val, y_val, cv=kf, scoring="r2")
 
     results["cv_r2"] = cv_scores.mean()
@@ -77,30 +86,36 @@ def evaluate_model(model_name, model, preprocessor, x_train, x_val, y_train, y_v
 
     return results
 
+
 def run_model_selection():
     df = load_dataset()
     if df is None: return
 
-    # Target
-    target_col = "ETA"
+    # ➤ FIX 2: Load target column from params.yaml dynamically
+    params = load_params()
+    target_col = params["training"].get("target_col", "duration")
+
     if target_col not in df.columns:
-        print(f"Error: Target {target_col} not found in dataset.")
-        return
+        # Fallback if the column is named "ETA" in the file but "duration" in params
+        if "ETA" in df.columns:
+            target_col = "ETA"
+        else:
+            print(f"❌ Error: Target column '{target_col}' not found in dataset columns: {df.columns.tolist()}")
+            return
+
+    print(f"🎯 Using target column: {target_col}")
 
     y = df[target_col]
     X = df.drop(columns=[target_col])
 
-    x_train, x_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42
-    )
-
-    x_val, y_val = x_train, y_train
+    x_train1, x_test, y_train1, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    x_train, x_val, y_train, y_val = train_test_split(x_train1, y_train1, test_size=0.2, random_state=42)
 
     models = {
         "LinearRegression": LinearRegression(),
-        "XGBoost": XGBRegressor(objective="reg:squarederror", n_jobs=-1),
-        "CatBoost": CatBoostRegressor(verbose=False, allow_writing_files=False),
-        "LightGBM": LGBMRegressor(n_jobs=-1, verbose=-1)
+        "XGBoost": XGBRegressor(objective="reg:squarederror", n_jobs=-1, random_state=42),
+        "CatBoost": CatBoostRegressor(verbose=False, allow_writing_files=False, random_state=42),
+        "LightGBM": LGBMRegressor(n_jobs=-1, verbose=-1, random_state=42)
     }
 
     # Pass columns to builder to ensure safety
@@ -110,36 +125,47 @@ def run_model_selection():
     best_rmse = float("inf")
     results_table = []
 
-    # MLflow experiment
-    mlflow.set_experiment("eta_model_selection")
+    print("🚀 Starting Model Selection...")
 
     for name, model in models.items():
+        # Start run within the main experiment
         with mlflow.start_run(run_name=name):
-            result = evaluate_model(
-                name, model, preprocessor,
-                x_train, x_val, y_train, y_val,
-                x_test, y_test
-            )
+            print(f"   Training {name}...")
+            try:
+                result = evaluate_model(
+                    name, model, preprocessor,
+                    x_train, x_val, y_train, y_val,
+                    x_test, y_test
+                )
 
-            # Log metrics
-            mlflow.log_metric("cv_r2", result["cv_r2"])
-            mlflow.log_metric("test_rmse", result["test_rmse"])
-            mlflow.log_metric("test_r2", result["test_r2"])
+                # Log metrics
+                mlflow.log_metric("cv_r2", result["cv_r2"])
+                mlflow.log_metric("test_rmse", result["test_rmse"])
+                mlflow.log_metric("test_r2", result["test_r2"])
 
-            # Log model artifact (scikit-learn flavor handles pipelines)
-            mlflow.sklearn.log_model(result["model"], artifact_path="model")
+                # Log model artifact
+                mlflow.sklearn.log_model(result["model"], artifact_path="model")
 
-            results_table.append(result)
+                print(f"   👉 {name}: R2={result['test_r2']:.4f}, RMSE={result['test_rmse']:.4f}")
 
-            if result["test_rmse"] < best_rmse:
-                best_rmse = result["test_rmse"]
-                best_model_info = result
+                results_table.append(result)
 
-    os.makedirs("models", exist_ok=True)
-    save_path = "models/best_model.pkl"
-    joblib.dump(best_model_info["model"], save_path)
+                if result["test_rmse"] < best_rmse:
+                    best_rmse = result["test_rmse"]
+                    best_model_info = result
+            except Exception as e:
+                print(f"   ⚠️ Failed to train {name}: {e}")
 
-    return best_model_info
+    if best_model_info:
+        print(f"🏆 Best Model: {best_model_info['model_name']} (RMSE: {best_rmse:.4f})")
+
+        os.makedirs("models", exist_ok=True)
+        # ➤ FIX 3: Save as 'best_model.pkl' (required by train_best_model.py)
+        save_path = "models/best_model.pkl"
+        joblib.dump(best_model_info["model"], save_path)
+        print(f"💾 Saved best model to {save_path}")
+    else:
+        print("❌ No models were trained successfully.")
 
 
 if __name__ == "__main__":
