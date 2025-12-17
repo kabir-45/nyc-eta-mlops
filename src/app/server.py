@@ -36,6 +36,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="NYC Taxi ETA Predictor", lifespan=lifespan)
 Instrumentator().instrument(app).expose(app)
+@app.get("/")
+def read_root():
+    return {"Hello": "World"}
+
 def preprocess_input(data: TaxiTripInput) -> pd.DataFrame:
     input_dict = data.model_dump()
     df = pd.DataFrame([input_dict])

@@ -1,17 +1,15 @@
 version: '3.8'
 
 services:
-  # 1. Your Taxi App
   taxi-app:
     build: .
     ports:
       - "8000:8000"
     volumes:
-      - ./models:/app/models  # Allows you to update the model without rebuilding
+      - ./models:/app/models
     networks:
       - monitoring
 
-  # 2. Prometheus (The Collector)
   prometheus:
     image: prom/prometheus
     ports:
@@ -28,6 +26,8 @@ services:
     image: grafana/grafana
     ports:
       - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
     volumes:
       - grafana_data:/var/lib/grafana
     networks:
