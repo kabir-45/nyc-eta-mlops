@@ -1,4 +1,4 @@
-# 🚖 NYC Taxi ETA Prediction - MLOps Pipeline
+# 🚖 NYC Taxi ETA Prediction - MLOps 
 
 A production-ready MLOps project that predicts the Estimated Time of Arrival (ETA) for NYC taxi trips. This repository demonstrates a complete End-to-End machine learning lifecycle, from data ingestion to model deployment, using industry-standard tools.
 
