@@ -11,8 +11,6 @@ A production-ready MLOps project that predicts the Estimated Time of Arrival (ET
 
 ---
 
-## 🏗 Architecture
-
 The project follows a modular MLOps architecture:
 
 * **Data Pipeline:** Managed by **DVC** to track data versions and processing stages.
