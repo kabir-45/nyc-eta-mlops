@@ -14,7 +14,7 @@ jobs:
       MLFLOW_TRACKING_PASSWORD: ${{ secrets.MLFLOW_TRACKING_PASSWORD }}
       AWS_ACCESS_KEY_ID: ${{ secrets.DVC_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.DVC_SECRET_ACCESS_KEY }}
-      AWS_REGION: "us-east-1"
+      AWS_REGION: "ap-southeast-1"
 
     steps:
       - name: Checkout Code
