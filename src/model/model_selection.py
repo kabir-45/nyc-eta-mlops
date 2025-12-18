@@ -15,8 +15,10 @@ from xgboost import XGBRegressor
 from lightgbm import LGBMRegressor
 from catboost import CatBoostRegressor
 
-# ➤ FIX 1: Use local DB file (Serverless mode) for CI/CD compatibility
-mlflow.set_tracking_uri("sqlite:///mlflow.db")
+dagshub_uri = os.getenv("MLFLOW_TRACKING_URI")
+if not dagshub_uri:
+    dagshub_uri = "sqlite:///mlflow.db"
+mlflow.set_tracking_uri(dagshub_uri)
 mlflow.set_experiment("NYC-Taxi-Trip-Duration")
 
 

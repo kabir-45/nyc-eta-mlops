@@ -5,8 +5,10 @@ import pandas as pd
 import joblib
 import os
 
-# Connect to Port 5001
-mlflow.set_tracking_uri("http://localhost:5001")
+dagshub_uri = os.getenv("MLFLOW_TRACKING_URI")
+if not dagshub_uri:
+    dagshub_uri = "sqlite:///mlflow.db"
+mlflow.set_tracking_uri(dagshub_uri)
 mlflow.set_experiment("NYC_Taxi_Registry_Demo")
 
 

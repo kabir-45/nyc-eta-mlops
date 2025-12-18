@@ -1,9 +1,12 @@
 import mlflow
 import mlflow.sklearn
 from mlflow.tracking import MlflowClient
+import os
 
-# ➤ FIX 1: Connect to local DB (Serverless mode)
-mlflow.set_tracking_uri("sqlite:///mlflow.db")
+dagshub_uri = os.getenv("MLFLOW_TRACKING_URI")
+if not dagshub_uri:
+    dagshub_uri = "sqlite:///mlflow.db"
+mlflow.set_tracking_uri(dagshub_uri)
 mlflow.set_experiment("NYC-Taxi-Trip-Duration")
 
 
