@@ -9,8 +9,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
-      MLFLOW_TRACKING_USERNAME: ${{ secrets.MLFLOW_TRACKING_USERNAME }}
+      MLFLOW_TRACKING_URI: "https://dagshub.com/kabir-45/nyc-eta-mlops.mlflow"
+      MLFLOW_TRACKING_USERNAME: "kabir-45"
       MLFLOW_TRACKING_PASSWORD: ${{ secrets.MLFLOW_TRACKING_PASSWORD }}
       AWS_ACCESS_KEY_ID: ${{ secrets.DVC_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.DVC_SECRET_ACCESS_KEY }}
