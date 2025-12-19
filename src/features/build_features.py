@@ -14,7 +14,7 @@ def run_feature_pipeline(raw_path: str, processed_path: str):
         dagshub_uri = "sqlite:///mlflow.db"
 
     mlflow.set_tracking_uri(dagshub_uri)
-    mlflow.set_experiment("eta_feature_engineering_v2")
+    mlflow.set_experiment(experiment_id="0")
 
     with mlflow.start_run(run_name="build_features"):
 

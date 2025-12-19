@@ -19,7 +19,7 @@ dagshub_uri = os.getenv("MLFLOW_TRACKING_URI")
 if not dagshub_uri:
     dagshub_uri = "sqlite:///mlflow.db"
 mlflow.set_tracking_uri(dagshub_uri)
-mlflow.set_experiment("NYC-Taxi-Trip-Duration")
+mlflow.set_experiment(experiment_id="0")
 
 
 def load_params(params_path="params.yaml"):
