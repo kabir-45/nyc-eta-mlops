@@ -5,15 +5,12 @@ import mlflow
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from src.features.build_features_transformer import BuildFeatures
 from src.utils import load_params
+import dagshub
 
 params = load_params()
 
 def run_feature_pipeline(raw_path: str, processed_path: str):
-    dagshub_uri = os.getenv("MLFLOW_TRACKING_URI")
-    if not dagshub_uri:
-        dagshub_uri = "sqlite:///mlflow.db"
-
-    mlflow.set_tracking_uri(dagshub_uri)
+    dagshub.init(repo_owner='kabir-45', repo_name='nyc-eta-mlops', mlflow=True)
     mlflow.set_experiment(experiment_id="0")
 
     with mlflow.start_run(run_name="build_features"):

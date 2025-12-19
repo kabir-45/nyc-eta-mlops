@@ -7,62 +7,71 @@ from sklearn.base import clone
 from sklearn.metrics import mean_squared_error, r2_score
 import numpy as np
 import yaml
+import dagshub
 
 
-# Load Params Helper
 def load_params(params_path="params.yaml"):
     with open(params_path, "r") as f:
         return yaml.safe_load(f)
 
 
 def train_production_model():
-    params = load_params()
+    # 1. Initialize Connection to DagsHub
+    dagshub.init(repo_owner='kabir-45', repo_name='nyc-eta-mlops', mlflow=True)
+    mlflow.set_experiment(experiment_id="0")
 
-    # Paths
-    processed_data_path = params['preprocessing']['processed_path']  # e.g. mlops_data/processed/eta_features.parquet
-    model_path = params['training']['model_path']  # The model saved by selection
+    # 2. Load Params
+    params = load_params()
+    processed_data_path = params['preprocessing']['processed_path']
+    model_path = "models/best_model.pkl"  # Hardcode or ensure param matches this
     target_col = params['training']['target_col']
 
-    # ➤ FIX: Use local DB file for CI/CD compatibility
-    mlflow.set_tracking_uri("sqlite:///mlflow.db")
-    mlflow.set_experiment("NYC-Taxi-Trip-Duration")
+    # 3. Start MLflow Run
+    with mlflow.start_run(run_name="train_production") as run:
 
-    with mlflow.start_run(run_name="production_model_training"):
-
+        # Check Data
         if not os.path.exists(processed_data_path):
             raise FileNotFoundError(f"Processed data not found at {processed_data_path}")
 
+        print(f"Loading data from {processed_data_path}...")
         df = pd.read_parquet(processed_data_path)
-
         X = df.drop(columns=[target_col])
         y = df[target_col]
 
-        # Load the best model found during selection
+        # Check Model
         if not os.path.exists(model_path):
-            # Fallback: If best_model.pkl isn't there, check for a 'models/' dir
-            raise FileNotFoundError(f"Best model not found at {model_path}. Run model_selection.py first.")
+            raise FileNotFoundError(f"Best model not found at {model_path}. Run model_selection first.")
 
         print(f"🚀 Loading best model from {model_path}...")
         loaded_model = joblib.load(model_path)
 
-        # Clone and Retrain
+        # 4. Retrain on Full Data
         production_model = clone(loaded_model)
         production_model.fit(X, y)
 
+        # 5. Calculate Metrics
         train_preds = production_model.predict(X)
         rmse = np.sqrt(mean_squared_error(y, train_preds))
         r2 = r2_score(y, train_preds)
 
         print(f"✅ Production Model Trained. R2: {r2:.4f}")
 
+        # 6. LOG TO MLFLOW
+        mlflow.log_metric("r2_score", r2)
         mlflow.log_metric("production_rmse", rmse)
-        mlflow.log_metric("production_r2", r2)
-        mlflow.sklearn.log_model(production_model, "model")  # Name artifact 'model' for consistency
 
-        # Save the final artifact
-        prod_path = "models/production_model.pkl"  # Ensuring consistent naming
+        # Log the model artifact as "model"
+        mlflow.sklearn.log_model(
+            sk_model=production_model,
+            artifact_path="model",
+            registered_model_name="NYC_Taxi_Predictor"  # Optional: registers immediately
+        )
+
+        # 7. Save Local File
+        prod_path = "models/production_model.pkl"
         joblib.dump(production_model, prod_path)
         print(f"💾 Saved final production model to {prod_path}")
+        print(f"Run ID: {run.info.run_id}")
 
 
 if __name__ == "__main__":

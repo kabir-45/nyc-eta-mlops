@@ -4,11 +4,10 @@ from mlflow.models import infer_signature
 import pandas as pd
 import joblib
 import os
+import dagshub
 
-dagshub_uri = os.getenv("MLFLOW_TRACKING_URI")
-if not dagshub_uri:
-    dagshub_uri = "sqlite:///mlflow.db"
-mlflow.set_tracking_uri(dagshub_uri)
+dagshub.init(repo_owner='kabir-45', repo_name='nyc-eta-mlops', mlflow=True)
+
 mlflow.set_experiment(experiment_id="0")
 
 
