@@ -9,6 +9,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
+      DAGSHUB_USER_TOKEN: ${{ secrets.MLFLOW_TRACKING_PASSWORD }}
       MLFLOW_TRACKING_URI: "https://dagshub.com/kabir-45/nyc-eta-mlops.mlflow"
       MLFLOW_TRACKING_USERNAME: "kabir-45"
       MLFLOW_TRACKING_PASSWORD: ${{ secrets.MLFLOW_TRACKING_PASSWORD }}
