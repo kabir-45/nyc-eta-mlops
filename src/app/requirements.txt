@@ -7,3 +7,6 @@ prometheus-fastapi-instrumentator==7.1.0
 httpx==0.28.1
 dvc-s3==3.2.2
 pyarrow==22.0.0
+xgboost==3.1.2
+lightgbm==4.6.0
+catboost==1.2.8
