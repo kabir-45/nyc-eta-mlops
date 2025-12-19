@@ -44,4 +44,3 @@ stages:
     cmd: python src/model/promote_model.py
     deps:
       - src/model/promote_model.py
-      - mlruns/
