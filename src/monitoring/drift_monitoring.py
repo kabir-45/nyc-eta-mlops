@@ -2,13 +2,7 @@ import sys
 import os
 import pandas as pd
 import mlflow
-try:
-    import evidently
-    print(f"🕵️‍♂️ DEBUG: evidently is loading from: {evidently.__file__}")
-except ImportError:
-    print("🕵️‍♂️ DEBUG: evidently could not be imported at all.")
-except AttributeError:
-    print("🕵️‍♂️ DEBUG: evidently imported, but has no __file__ attribute (namespace package?)")
+import evidently
 from evidently.report import Report
 from evidently.metric_preset import DataDriftPreset
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))

@@ -17,9 +17,7 @@ from catboost import CatBoostRegressor
 import dagshub
 
 dagshub.init(repo_owner='kabir-45', repo_name='nyc-eta-mlops', mlflow=True)
-
 mlflow.set_experiment(experiment_id="0")
-
 
 def load_params(params_path="params.yaml"):
     with open(params_path, "r") as f:
@@ -68,15 +66,10 @@ def evaluate_model(model_name, model, preprocessor, x_train, x_val, y_train, y_v
     ])
 
     kf = KFold(n_splits=3, shuffle=True, random_state=42)
-    # Using 'neg_root_mean_squared_error' or 'r2'
     cv_scores = cross_val_score(pipeline, x_val, y_val, cv=kf, scoring="r2")
-
     results["cv_r2"] = cv_scores.mean()
 
-    # ---- Fit on training set ----
     pipeline.fit(x_train, y_train)
-
-    # ---- Evaluate on test set ----
     preds = pipeline.predict(x_test)
     rmse = np.sqrt(mean_squared_error(y_test, preds))
     r2 = r2_score(y_test, preds)
@@ -92,7 +85,7 @@ def run_model_selection():
     df = load_dataset()
     if df is None: return
 
-    # ➤ FIX 2: Load target column from params.yaml dynamically
+    # load target column from params.yaml dynamically
     params = load_params()
     target_col = params["training"].get("target_col", "duration")
 
@@ -101,10 +94,10 @@ def run_model_selection():
         if "ETA" in df.columns:
             target_col = "ETA"
         else:
-            print(f"❌ Error: Target column '{target_col}' not found in dataset columns: {df.columns.tolist()}")
+            print(f" Error: Target column '{target_col}' not found in dataset columns: {df.columns.tolist()}")
             return
 
-    print(f"🎯 Using target column: {target_col}")
+    print(f" Using target column: {target_col}")
 
     y = df[target_col]
     X = df.drop(columns=[target_col])
@@ -126,8 +119,7 @@ def run_model_selection():
     best_rmse = float("inf")
     results_table = []
 
-    print("🚀 Starting Model Selection...")
-
+    print("Starting Model Selection...")
     for name, model in models.items():
         # Start run within the main experiment
         with mlflow.start_run(run_name=name):
@@ -147,7 +139,7 @@ def run_model_selection():
                 # Log model artifact
                 mlflow.sklearn.log_model(result["model"], artifact_path="model")
 
-                print(f"   👉 {name}: R2={result['test_r2']:.4f}, RMSE={result['test_rmse']:.4f}")
+                print(f"    {name}: R2={result['test_r2']:.4f}, RMSE={result['test_rmse']:.4f}")
 
                 results_table.append(result)
 
@@ -155,18 +147,17 @@ def run_model_selection():
                     best_rmse = result["test_rmse"]
                     best_model_info = result
             except Exception as e:
-                print(f"   ⚠️ Failed to train {name}: {e}")
+                print(f"Failed to train {name}: {e}")
 
     if best_model_info:
-        print(f"🏆 Best Model: {best_model_info['model_name']} (RMSE: {best_rmse:.4f})")
+        print(f" Best Model: {best_model_info['model_name']} (RMSE: {best_rmse:.4f})")
 
         os.makedirs("models", exist_ok=True)
-        # ➤ FIX 3: Save as 'best_model.pkl' (required by train_best_model.py)
         save_path = "models/best_model.pkl"
         joblib.dump(best_model_info["model"], save_path)
-        print(f"💾 Saved best model to {save_path}")
+        print(f"Saved best model to {save_path}")
     else:
-        print("❌ No models were trained successfully.")
+        print("No models were trained successfully.")
 
 
 if __name__ == "__main__":
